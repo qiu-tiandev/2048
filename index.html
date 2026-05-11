@@ -23,7 +23,7 @@
       --shadow:      rgba(119,110,101,.2);
       --transition:  .15s ease;
     }
-    [data-theme="dark"] {
+    [data-mode="dark"] {
       --bg:          #1a1a2e;
       --header-bg:   #1a1a2e;
       --title-color: #e0d8c8;
@@ -36,6 +36,51 @@
       --btn-bg:      #533483;
       --btn-text:    #e0d8c8;
       --shadow:      rgba(0,0,0,.4);
+    }
+
+    [data-theme="mint"] {
+      --bg:          #e4f7f0;
+      --header-bg:   #e4f7f0;
+      --title-color: #245c4b;
+      --text:        #245c4b;
+      --subtext:     #5fa690;
+      --score-bg:    #5fa690;
+      --score-text:  #f9f6f2;
+      --board-bg:    #5fa690;
+      --cell-bg:     #d7f0e7;
+      --btn-bg:      #245c4b;
+      --btn-text:    #f9f6f2;
+      --shadow:      rgba(36,92,75,.2);
+    }
+
+    [data-theme="bubblegum"] {
+      --bg:          #ffe6f0;
+      --header-bg:   #ffe6f0;
+      --title-color: #7d2554;
+      --text:        #7d2554;
+      --subtext:     #c97b9e;
+      --score-bg:    #c97b9e;
+      --score-text:  #f9f6f2;
+      --board-bg:    #c97b9e;
+      --cell-bg:     #ffd3e8;
+      --btn-bg:      #7d2554;
+      --btn-text:    #f9f6f2;
+      --shadow:      rgba(125,37,84,.2);
+    }
+
+    [data-theme="galaxy"] {
+      --bg:          #131432;
+      --header-bg:   #131432;
+      --title-color: #d0d4ff;
+      --text:        #d0d4ff;
+      --subtext:     #a39fe1;
+      --score-bg:    #2c2f68;
+      --score-text:  #f9f6f2;
+      --board-bg:    #2c2f68;
+      --cell-bg:     #1d2144;
+      --btn-bg:      #6b60ff;
+      --btn-text:    #f9f6f2;
+      --shadow:      rgba(107,96,255,.2);
     }
 
     /* ── Tile Palette (light) ── */
@@ -205,7 +250,29 @@
       background: var(--btn-text);
       transition: transform .2s;
     }
-    [data-theme="dark"] .toggle::after { transform: translateX(18px); }
+    [data-mode="dark"] .toggle::after { transform: translateX(18px); }
+
+    .theme-picker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .85rem;
+      color: var(--text);
+    }
+    .theme-picker select {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: white;
+      color: #333;
+      font: inherit;
+      outline: none;
+    }
+    [data-mode="dark"] .theme-picker select {
+      background: #333;
+      color: #f9f6f2;
+      border-color: #555;
+    }
 
     /* ── Board ── */
     .board-wrap {
@@ -283,7 +350,7 @@
       z-index: 10;
       backdrop-filter: blur(2px);
     }
-    [data-theme="dark"] .overlay { background: rgba(26,26,46,.8); }
+    [data-mode="dark"] .overlay { background: rgba(26,26,46,.8); }
     .overlay.show { display: flex; }
     .overlay-title {
       font-family: 'Rajdhani', sans-serif;
@@ -311,7 +378,16 @@
   </div>
 
   <div class="above-game">
-    <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
+    <div class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></div>
+    <div class="theme-picker">
+      <label for="themeSelect">Theme</label>
+      <select id="themeSelect" aria-label="Select theme">
+        <option value="default">Default</option>
+        <option value="mint">Mint</option>
+        <option value="bubblegum">Bubblegum</option>
+        <option value="galaxy">Galaxy</option>
+      </select>
+    </div>
     <div class="btn-row">
       <button class="toggle" id="darkToggle" title="Toggle dark mode" aria-label="Toggle dark mode"></button>
       <button id="newGameBtn">New Game</button>
@@ -338,6 +414,8 @@
 const GRID = 4;
 const STORAGE_KEY  = '2048_state';
 const BEST_KEY     = '2048_best';
+const THEME_KEY    = '2048_palette';
+const MODE_KEY     = '2048_mode';
 
 let board = [], score = 0, best = 0, tileId = 0;
 let animating = false;
@@ -622,14 +700,37 @@ function loadState() {
 }
 
 /* ── Theme ── */
-function loadTheme() {
-  const t = localStorage.getItem('2048_theme') || 'light';
-  document.documentElement.dataset.theme = t;
+function setTheme(theme) {
+  if (!theme || theme === 'default') theme = 'default';
+  document.documentElement.dataset.theme = theme;
+  const selector = document.getElementById('themeSelect');
+  if (selector) selector.value = theme;
+  localStorage.setItem(THEME_KEY, theme);
 }
+
+function setMode(mode) {
+  if (!mode || mode !== 'dark') mode = 'light';
+  document.documentElement.dataset.mode = mode;
+  localStorage.setItem(MODE_KEY, mode);
+}
+
+function loadTheme() {
+  const theme = localStorage.getItem(THEME_KEY) || 'default';
+  const mode = localStorage.getItem(MODE_KEY) || 'light';
+  setTheme(theme);
+  setMode(mode);
+}
+
+const themeSelect = document.getElementById('themeSelect');
+if (themeSelect) {
+  themeSelect.addEventListener('change', e => {
+    setTheme(e.target.value);
+  });
+}
+
 $darkToggle.addEventListener('click', () => {
-  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = next;
-  localStorage.setItem('2048_theme', next);
+  const next = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
+  setMode(next);
 });
 
 /* ── Keyboard ── */
