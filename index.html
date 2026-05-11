@@ -50,7 +50,15 @@
     .t512  { background:#edc850; color:#f9f6f2; }
     .t1024 { background:#edc53f; color:#f9f6f2; }
     .t2048 { background:#edc22e; color:#f9f6f2; }
-    .tmax  { background:#3c3a32; color:#f9f6f2; }
+    .t4096 { background:#eee4da; color:#776e65; }
+    .t8192 { background:#ede0c8; color:#776e65; }
+    .t16384 { background:#f2b179; color:#f9f6f2; }
+    .t32768 { background:#f59563; color:#f9f6f2; }
+    .t65536 { background:#f67c5f; color:#f9f6f2; }
+    .t131072 { background:#f65e3b; color:#f9f6f2; }
+    .t262144 { background:#edcf72; color:#f9f6f2; }
+    .t524288 { background:#edcc61; color:#f9f6f2; }
+    .t1048576 { background:#edc850; color:#f9f6f2; }
 
     /* ── Dark-mode tile tweaks ── */
     /* Dark mode: keep original tile colors */
@@ -395,8 +403,8 @@ function positionTile(el, r, c) {
 }
 
 function tileClass(v) {
-  if (v <= 2048) return 't' + v;
-  return 'tmax';
+  if (v <= 1048576) return 't' + v;
+  return 't1048576';
 }
 function fontSize(v) {
   if (v < 100)   return 'clamp(2rem, 8vw, 2.6rem)';
@@ -408,15 +416,9 @@ function fontSize(v) {
 /* ── Move logic ── */
 function move(dir) {
   if (moving) return;
-  const prev = JSON.stringify(board);
-
-  // Collect tile elements by position
-  const tileEls = {};
-  [...$tiles.querySelectorAll('.tile')].forEach(el => {
-    const r = parseInt(el.dataset.r);
-    const c = parseInt(el.dataset.c);
-    tileEls[`${r},${c}`] = el;
-  });
+  
+  // Save previous state to detect if move happened
+  const prevBoard = board.map(row => [...row]);
 
   // Determine traversal order
   let rows = [...Array(GRID).keys()];
@@ -446,9 +448,6 @@ function move(dir) {
     if (tr === r && tc === c) return;
     moved = true;
 
-    const el = tileEls[`${r},${c}`];
-    if (el) positionTile(el, tr, tc);
-
     if (board[tr][tc] === val && !(tr === r && tc === c)) {
       // Merge
       merged.add(`${tr},${tc}`);
@@ -457,30 +456,21 @@ function move(dir) {
       if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
       board[r][c]  = 0;
       board[tr][tc] = newVal;
-
-      // After slide animation, swap elements
-      setTimeout(() => {
-        const old = $tiles.querySelector(`[data-id="${tileEls[`${tr},${tc}`]?.dataset.id}"]`);
-        if (old) old.remove();
-        if (el) {
-          el.querySelector('.tile-inner').className = 'tile-inner ' + tileClass(newVal);
-          el.querySelector('.tile-inner').style.fontSize = fontSize(newVal);
-          el.querySelector('.tile-inner').textContent    = newVal;
-          el.classList.remove('is-new');
-          el.classList.add('is-merged');
-          el.addEventListener('animationend', () => el.classList.remove('is-merged'), {once:true});
-        }
-      }, 110);
     } else {
       board[r][c]   = 0;
       board[tr][tc] = val;
     }
   }));
 
-  if (!moved) return;
+  // Only continue if board actually changed
+  if (!moved || JSON.stringify(board) === JSON.stringify(prevBoard)) return;
 
   moving = true;
   updateScore();
+  
+  // Re-render with new positions
+  renderBoard();
+  
   setTimeout(() => {
     addTile();
     saveState();
@@ -498,8 +488,6 @@ function step(r, c, dir) {
 
 /* ── End detection ── */
 function checkEnd() {
-  const won = board.some(row => row.includes(2048));
-  if (won) { showOverlay('You Win! 🎉', 'Keep going or start fresh.', true); return; }
   if (!hasMove()) showOverlay('Game Over', 'No moves left!', false);
 }
 
