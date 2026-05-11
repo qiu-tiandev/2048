@@ -523,15 +523,22 @@ function animateMove(tileChanges) {
 
   // Animate each change
   tileChanges.forEach(change => {
-    const el = tileMap[`${change.fromR},${change.fromC}`];
+    const sourceKey = `${change.fromR},${change.fromC}`;
+    const targetKey = `${change.toR},${change.toC}`;
+    const el = tileMap[sourceKey];
     if (!el) return;
 
     if (change.type === 'merge') {
-      // Glide to merge position
+      // Remove old destination tile immediately so it doesn't overlap
+      const destEl = tileMap[targetKey];
+      if (destEl && destEl !== el) {
+        destEl.remove();
+        delete tileMap[targetKey];
+      }
+
+      // Glide source tile to merge position
       positionTile(el, change.toR, change.toC);
-      // Mark for merge animation
       el.classList.add('is-merged');
-      // Update value after animation starts
       setTimeout(() => {
         const inner = el.querySelector('.tile-inner');
         inner.className = 'tile-inner ' + tileClass(change.newValue);
@@ -539,7 +546,6 @@ function animateMove(tileChanges) {
         inner.textContent = change.newValue;
       }, 60);
     } else {
-      // Just glide to new position
       positionTile(el, change.toR, change.toC);
     }
   });
