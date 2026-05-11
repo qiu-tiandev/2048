@@ -313,7 +313,7 @@ const GRID = 4;
 const STORAGE_KEY  = '2048_state';
 const BEST_KEY     = '2048_best';
 
-let board = [], score = 0, best = 0, tileId = 0, moving = false;
+let board = [], score = 0, best = 0, tileId = 0;
 
 /* ── DOM refs ── */
 const $score     = document.getElementById('score');
@@ -367,11 +367,39 @@ function addTile(isLoad = false) {
 
 /* ── Render all tiles from board state ── */
 function renderBoard() {
-  $tiles.innerHTML = '';
-  tileId = 0;
+  // Map existing tiles by position
+  const existing = {};
+  [...$tiles.querySelectorAll('.tile')].forEach(el => {
+    const r = parseInt(el.dataset.r);
+    const c = parseInt(el.dataset.c);
+    const val = board[r]?.[c];
+    if (val) existing[`${r},${c}`] = el;
+  });
+
+  // Update the board
   board.forEach((row, r) => row.forEach((v, c) => {
-    if (v) spawnTileEl(r, c, v, false);
+    if (v) {
+      const key = `${r},${c}`;
+      const el = existing[key];
+      if (el) {
+        // Tile already exists - just update value if it changed
+        const inner = el.querySelector('.tile-inner');
+        const oldVal = parseInt(inner.textContent);
+        if (oldVal !== v) {
+          inner.className = 'tile-inner ' + tileClass(v);
+          inner.style.fontSize = fontSize(v);
+          inner.textContent = v;
+        }
+        delete existing[key];
+      } else {
+        // New tile - create it
+        spawnTileEl(r, c, v, false);
+      }
+    }
   }));
+
+  // Remove tiles that no longer exist (they were merged)
+  Object.values(existing).forEach(el => el.remove());
 }
 
 /* ── Create a tile element ── */
@@ -415,9 +443,11 @@ function fontSize(v) {
 
 /* ── Move logic ── */
 function move(dir) {
-  if (moving) return;
-  
-  // Save board to track what changed
+  // Check if game is over first
+  const gameOver = !hasMove();
+  if (gameOver) return;
+
+  // Save previous state to detect changes
   const prevBoard = board.map(row => [...row]);
   
   // Determine traversal order
@@ -428,9 +458,9 @@ function move(dir) {
 
   let moved = false;
   const merged = new Set();
-  const tileMovements = {}; // {$r,$c}: {oldR, oldC, newR, newC, val, merged: bool}
+  const tileChanges = []; // Track what changed: {type: 'move'|'merge', fromR, fromC, toR, toC, newValue}
 
-  // Process moves
+  // Process moves on board state
   rows.forEach(r => cols.forEach(c => {
     const val = board[r][c];
     if (!val) return;
@@ -450,35 +480,40 @@ function move(dir) {
     if (tr === r && tc === c) return;
     moved = true;
 
-    const isMerge = board[tr][tc] === val && !(tr === r && tc === c);
-    
-    if (isMerge) {
+    if (board[tr][tc] === val && !(tr === r && tc === c)) {
+      // Merge
       merged.add(`${tr},${tc}`);
       const newVal = val * 2;
       score += newVal;
       if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
-      
-      // Record that merging tile moves to destination
-      tileMovements[`${r},${c}`] = { oldR: r, oldC: c, newR: tr, newC: tc, val, merged: true, newVal };
-      // Record that destination gets merged animation and value update
-      tileMovements[`${tr},${tc}`] = { oldR: tr, oldC: tc, newR: tr, newC: tc, val, mergeTarget: true, newVal };
-      
+      tileChanges.push({ type: 'merge', fromR: r, fromC: c, toR: tr, toC: tc, newValue: newVal });
       board[r][c] = 0;
       board[tr][tc] = newVal;
     } else {
-      // Regular slide
-      tileMovements[`${r},${c}`] = { oldR: r, oldC: c, newR: tr, newC: tc, val, merged: false };
+      // Slide
+      tileChanges.push({ type: 'move', fromR: r, fromC: c, toR: tr, toC: tc });
       board[r][c] = 0;
       board[tr][tc] = val;
     }
   }));
 
+  // If nothing moved, return
   if (!moved) return;
 
-  moving = true;
   updateScore();
 
-  // Get existing elements
+  // Animate the changes visually
+  animateMove(tileChanges);
+
+  // Add new tile and save state
+  addTile();
+  saveState();
+  
+  checkEnd();
+}
+
+function animateMove(tileChanges) {
+  // Get all current tile elements
   const tileMap = {};
   [...$tiles.querySelectorAll('.tile')].forEach(el => {
     const r = parseInt(el.dataset.r);
@@ -486,41 +521,35 @@ function move(dir) {
     tileMap[`${r},${c}`] = el;
   });
 
-  // Animate all movements
-  Object.entries(tileMovements).forEach(([key, move]) => {
-    const el = tileMap[`${move.oldR},${move.oldC}`];
+  // Animate each change
+  tileChanges.forEach(change => {
+    const el = tileMap[`${change.fromR},${change.fromC}`];
     if (!el) return;
 
-    if (move.mergeTarget) {
-      // This element is the merge target - stays in place but gets merge animation and value update
+    if (change.type === 'merge') {
+      // Glide to merge position
+      positionTile(el, change.toR, change.toC);
+      // Mark for merge animation
       el.classList.add('is-merged');
+      // Update value after animation starts
       setTimeout(() => {
         const inner = el.querySelector('.tile-inner');
-        inner.className = 'tile-inner ' + tileClass(move.newVal);
-        inner.style.fontSize = fontSize(move.newVal);
-        inner.textContent = move.newVal;
+        inner.className = 'tile-inner ' + tileClass(change.newValue);
+        inner.style.fontSize = fontSize(change.newValue);
+        inner.textContent = change.newValue;
       }, 60);
-    } else if (move.merged) {
-      // This element is merging - glide to target then remove
-      positionTile(el, move.newR, move.newC);
-      setTimeout(() => el.remove(), 120);
     } else {
-      // Regular movement - glide to new position
-      positionTile(el, move.newR, move.newC);
+      // Just glide to new position
+      positionTile(el, change.toR, change.toC);
     }
   });
 
-  // Spawn new tile immediately so pop-in animation starts with glide animation
-  addTile();
-
-  // Wait for animations to complete, then clean up
+  // After animations complete, refresh the board to handle any DOM cleanup
   setTimeout(() => {
     renderBoard();
-    saveState();
-    moving = false;
-    checkEnd();
   }, 120);
 }
+
 
 function step(r, c, dir) {
   if (dir === 'up')    return [r - 1, c];
