@@ -79,12 +79,39 @@
     }
 
     /* ── Layout ── */
-    .wrapper {
+    .container {
       width: min(500px, 100vw - 24px);
+      margin: 0 auto;
       padding: 20px 0 40px;
+    }
+
+    .heading {
       display: flex;
-      flex-direction: column;
-      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .scores-container {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .above-game {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .game-intro {
+      font-size: .9rem;
+      color: var(--subtext);
+      line-height: 1.4;
     }
 
     /* ── Header ── */
@@ -268,11 +295,10 @@
   </style>
 </head>
 <body>
-<div class="wrapper">
-  <!-- Header -->
-  <div class="header">
+<div class="container">
+  <div class="heading">
     <div class="title">2048</div>
-    <div class="scores-row">
+    <div class="scores-container">
       <div class="score-box">
         <div class="score-label">Score</div>
         <div class="score-value" id="score">0</div>
@@ -284,23 +310,23 @@
     </div>
   </div>
 
-  <!-- Controls -->
-  <div class="controls">
-    <span class="hint">Use arrow keys or swipe</span>
+  <div class="above-game">
+    <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
     <div class="btn-row">
       <button class="toggle" id="darkToggle" title="Toggle dark mode" aria-label="Toggle dark mode"></button>
       <button id="newGameBtn">New Game</button>
     </div>
   </div>
 
-  <!-- Board -->
-  <div class="board-wrap" id="board">
-    <div class="grid" id="grid"></div>
-    <div class="tiles" id="tiles"></div>
-    <div class="overlay" id="overlay">
-      <div class="overlay-title" id="overlayTitle">Game Over</div>
-      <div class="overlay-sub" id="overlaySub">No moves left!</div>
-      <button id="overlayBtn">Try Again</button>
+  <div class="game-container">
+    <div class="board-wrap" id="board">
+      <div class="grid" id="grid"></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="overlay" id="overlay">
+        <div class="overlay-title" id="overlayTitle">Game Over</div>
+        <div class="overlay-sub" id="overlaySub">No moves left!</div>
+        <button id="overlayBtn">Try Again</button>
+      </div>
     </div>
   </div>
 </div>
