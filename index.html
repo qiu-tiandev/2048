@@ -340,6 +340,8 @@ const STORAGE_KEY  = '2048_state';
 const BEST_KEY     = '2048_best';
 
 let board = [], score = 0, best = 0, tileId = 0;
+let animating = false;
+const moveQueue = [];
 
 /* ── DOM refs ── */
 const $score     = document.getElementById('score');
@@ -393,39 +395,11 @@ function addTile(isLoad = false) {
 
 /* ── Render all tiles from board state ── */
 function renderBoard() {
-  // Map existing tiles by position
-  const existing = {};
-  [...$tiles.querySelectorAll('.tile')].forEach(el => {
-    const r = parseInt(el.dataset.r);
-    const c = parseInt(el.dataset.c);
-    const val = board[r]?.[c];
-    if (val) existing[`${r},${c}`] = el;
-  });
-
-  // Update the board
+  $tiles.innerHTML = '';
+  tileId = 0;
   board.forEach((row, r) => row.forEach((v, c) => {
-    if (v) {
-      const key = `${r},${c}`;
-      const el = existing[key];
-      if (el) {
-        // Tile already exists - just update value if it changed
-        const inner = el.querySelector('.tile-inner');
-        const oldVal = parseInt(inner.textContent);
-        if (oldVal !== v) {
-          inner.className = 'tile-inner ' + tileClass(v);
-          inner.style.fontSize = fontSize(v);
-          inner.textContent = v;
-        }
-        delete existing[key];
-      } else {
-        // New tile - create it
-        spawnTileEl(r, c, v, false);
-      }
-    }
+    if (v) spawnTileEl(r, c, v, false);
   }));
-
-  // Remove tiles that no longer exist (they were merged)
-  Object.values(existing).forEach(el => el.remove());
 }
 
 /* ── Create a tile element ── */
@@ -469,13 +443,15 @@ function fontSize(v) {
 
 /* ── Move logic ── */
 function move(dir) {
-  // Check if game is over first
-  const gameOver = !hasMove();
-  if (gameOver) return;
+  if (animating) {
+    moveQueue.push(dir);
+    return;
+  }
 
-  // Save previous state to detect changes
-  const prevBoard = board.map(row => [...row]);
-  
+  if (!hasMove()) return;
+
+  animating = true;
+
   // Determine traversal order
   let rows = [...Array(GRID).keys()];
   let cols = [...Array(GRID).keys()];
@@ -523,18 +499,17 @@ function move(dir) {
     }
   }));
 
-  // If nothing moved, return
-  if (!moved) return;
+  // If nothing moved, release and return
+  if (!moved) {
+    animating = false;
+    if (moveQueue.length) move(moveQueue.shift());
+    return;
+  }
 
   updateScore();
-
-  // Animate the changes visually
   animateMove(tileChanges);
-
-  // Add new tile and save state
   addTile();
   saveState();
-  
   checkEnd();
 }
 
@@ -579,6 +554,8 @@ function animateMove(tileChanges) {
   // After animations complete, refresh the board to handle any DOM cleanup
   setTimeout(() => {
     renderBoard();
+    animating = false;
+    if (moveQueue.length) move(moveQueue.shift());
   }, 120);
 }
 
