@@ -53,18 +53,7 @@
     .tmax  { background:#3c3a32; color:#f9f6f2; }
 
     /* ── Dark-mode tile tweaks ── */
-    [data-theme="dark"] .t2    { background:#2a2060; color:#e0d8c8; }
-    [data-theme="dark"] .t4    { background:#2e2570; color:#e0d8c8; }
-    [data-theme="dark"] .t8    { background:#7b3f8a; color:#f9f6f2; }
-    [data-theme="dark"] .t16   { background:#8c3fa0; color:#f9f6f2; }
-    [data-theme="dark"] .t32   { background:#9d3fa8; color:#f9f6f2; }
-    [data-theme="dark"] .t64   { background:#b03fc0; color:#f9f6f2; }
-    [data-theme="dark"] .t128  { background:#7b6baa; color:#f9f6f2; }
-    [data-theme="dark"] .t256  { background:#8b7bbf; color:#f9f6f2; }
-    [data-theme="dark"] .t512  { background:#9b8bd4; color:#f9f6f2; }
-    [data-theme="dark"] .t1024 { background:#a99be8; color:#f9f6f2; }
-    [data-theme="dark"] .t2048 { background:#c4b5f7; color:#3c3a32; }
-    [data-theme="dark"] .tmax  { background:#e8e4f0; color:#3c3a32; }
+    /* Dark mode: keep original tile colors */
 
     /* ── Reset & Base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -381,8 +370,8 @@ function renderBoard() {
 function spawnTileEl(r, c, val, isNew) {
   const el = document.createElement('div');
   el.className = 'tile';
-  el.dataset.id = ++tileId;
-  const inner = document.createElement('div');
+  el.dataset.id = ++tileId;  el.dataset.r = r;
+  el.dataset.c = c;  const inner = document.createElement('div');
   inner.className = 'tile-inner ' + tileClass(val);
   inner.style.fontSize = fontSize(val);
   inner.textContent = val;
@@ -394,6 +383,8 @@ function spawnTileEl(r, c, val, isNew) {
 }
 
 function positionTile(el, r, c) {
+  el.dataset.r = r;
+  el.dataset.c = c;
   const gap  = 10;
   const wrap = $tiles.getBoundingClientRect();
   const size = (wrap.width - gap * (GRID - 1)) / GRID;
@@ -408,10 +399,10 @@ function tileClass(v) {
   return 'tmax';
 }
 function fontSize(v) {
-  if (v < 100)   return 'clamp(1.6rem, 7vw, 2.2rem)';
-  if (v < 1000)  return 'clamp(1.3rem, 5vw, 1.8rem)';
-  if (v < 10000) return 'clamp(1rem, 4vw, 1.4rem)';
-  return 'clamp(.8rem, 3vw, 1.1rem)';
+  if (v < 100)   return 'clamp(2rem, 8vw, 2.6rem)';
+  if (v < 1000)  return 'clamp(1.6rem, 6vw, 2.2rem)';
+  if (v < 10000) return 'clamp(1.3rem, 5vw, 1.8rem)';
+  return 'clamp(1rem, 4vw, 1.4rem)';
 }
 
 /* ── Move logic ── */
@@ -422,11 +413,8 @@ function move(dir) {
   // Collect tile elements by position
   const tileEls = {};
   [...$tiles.querySelectorAll('.tile')].forEach(el => {
-    const gap  = 10;
-    const wrap = $tiles.getBoundingClientRect();
-    const size = (wrap.width - gap * (GRID - 1)) / GRID;
-    const c    = Math.round(parseFloat(el.style.left)  / (size + gap));
-    const r    = Math.round(parseFloat(el.style.top)   / (size + gap));
+    const r = parseInt(el.dataset.r);
+    const c = parseInt(el.dataset.c);
     tileEls[`${r},${c}`] = el;
   });
 
