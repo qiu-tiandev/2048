@@ -218,7 +218,7 @@
       justify-content: center;
       font-family: 'Rajdhani', sans-serif;
       font-weight: 700;
-      transition: left .1s ease, top .1s ease, width .1s ease, height .1s ease;
+      transition: left .12s ease, top .12s ease, width .12s ease, height .12s ease;
       will-change: left, top;
     }
     .tile-inner {
@@ -229,7 +229,7 @@
       justify-content: center;
     }
     .tile.is-new .tile-inner    { animation: pop-in .12s ease; }
-    .tile.is-merged .tile-inner { animation: merge  .12s ease; }
+    .tile.is-merged .tile-inner { animation: merge .12s ease; }
 
     @keyframes pop-in {
       0%   { transform: scale(0); }
@@ -238,7 +238,7 @@
     }
     @keyframes merge {
       0%   { transform: scale(1); }
-      50%  { transform: scale(1.18); }
+      50%  { transform: scale(1.15); }
       100% { transform: scale(1); }
     }
 
@@ -417,9 +417,9 @@ function fontSize(v) {
 function move(dir) {
   if (moving) return;
   
-  // Save previous state to detect if move happened
+  // Save board to track what changed
   const prevBoard = board.map(row => [...row]);
-
+  
   // Determine traversal order
   let rows = [...Array(GRID).keys()];
   let cols = [...Array(GRID).keys()];
@@ -428,7 +428,9 @@ function move(dir) {
 
   let moved = false;
   const merged = new Set();
+  const tileMovements = {}; // {$r,$c}: {oldR, oldC, newR, newC, val, merged: bool}
 
+  // Process moves
   rows.forEach(r => cols.forEach(c => {
     const val = board[r][c];
     if (!val) return;
@@ -448,35 +450,76 @@ function move(dir) {
     if (tr === r && tc === c) return;
     moved = true;
 
-    if (board[tr][tc] === val && !(tr === r && tc === c)) {
-      // Merge
+    const isMerge = board[tr][tc] === val && !(tr === r && tc === c);
+    
+    if (isMerge) {
       merged.add(`${tr},${tc}`);
       const newVal = val * 2;
       score += newVal;
       if (score > best) { best = score; localStorage.setItem(BEST_KEY, best); }
-      board[r][c]  = 0;
+      
+      // Record that merging tile moves to destination
+      tileMovements[`${r},${c}`] = { oldR: r, oldC: c, newR: tr, newC: tc, val, merged: true, newVal };
+      // Record that destination gets merged animation and value update
+      tileMovements[`${tr},${tc}`] = { oldR: tr, oldC: tc, newR: tr, newC: tc, val, mergeTarget: true, newVal };
+      
+      board[r][c] = 0;
       board[tr][tc] = newVal;
     } else {
-      board[r][c]   = 0;
+      // Regular slide
+      tileMovements[`${r},${c}`] = { oldR: r, oldC: c, newR: tr, newC: tc, val, merged: false };
+      board[r][c] = 0;
       board[tr][tc] = val;
     }
   }));
 
-  // Only continue if board actually changed
-  if (!moved || JSON.stringify(board) === JSON.stringify(prevBoard)) return;
+  if (!moved) return;
 
   moving = true;
   updateScore();
-  
-  // Re-render with new positions
-  renderBoard();
-  
+
+  // Get existing elements
+  const tileMap = {};
+  [...$tiles.querySelectorAll('.tile')].forEach(el => {
+    const r = parseInt(el.dataset.r);
+    const c = parseInt(el.dataset.c);
+    tileMap[`${r},${c}`] = el;
+  });
+
+  // Animate all movements
+  Object.entries(tileMovements).forEach(([key, move]) => {
+    const el = tileMap[`${move.oldR},${move.oldC}`];
+    if (!el) return;
+
+    if (move.mergeTarget) {
+      // This element is the merge target - stays in place but gets merge animation and value update
+      el.classList.add('is-merged');
+      setTimeout(() => {
+        const inner = el.querySelector('.tile-inner');
+        inner.className = 'tile-inner ' + tileClass(move.newVal);
+        inner.style.fontSize = fontSize(move.newVal);
+        inner.textContent = move.newVal;
+      }, 60);
+    } else if (move.merged) {
+      // This element is merging - glide to target then remove
+      positionTile(el, move.newR, move.newC);
+      setTimeout(() => el.remove(), 120);
+    } else {
+      // Regular movement - glide to new position
+      positionTile(el, move.newR, move.newC);
+    }
+  });
+
+  // Spawn new tile immediately so pop-in animation starts with glide animation
+  addTile();
+
+  // Wait for animations to complete, then clean up
   setTimeout(() => {
-    addTile();
+    renderBoard();
     saveState();
     moving = false;
     checkEnd();
-  }, 130);
+  }, 120);
 }
 
 function step(r, c, dir) {
