@@ -5,6 +5,7 @@
   <title>2048</title>
 
   <link href="style/main.css" rel="stylesheet" type="text/css">
+  <link href="style/themes.css" rel="stylesheet" type="text/css">
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="meta/apple-touch-icon.png">
   <link rel="apple-touch-startup-image" href="meta/apple-touch-startup-image-640x1096.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)"> <!-- iPhone 5+ -->
@@ -23,6 +24,18 @@
       <div class="scores-container">
         <div class="score-container">0</div>
         <div class="best-container">0</div>
+      </div>
+      <div class="theme-selector">
+        <label for="theme-select">Theme:</label>
+        <select id="theme-select">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="mint">Mint</option>
+          <option value="bubblegum">Bubblegum</option>
+          <option value="galaxy">Galaxy</option>
+          <option value="pastels">Pastels</option>
+          <option value="neon">Neon</option>
+        </select>
       </div>
     </div>
 
@@ -93,6 +106,7 @@
   <script src="js/grid.js"></script>
   <script src="js/tile.js"></script>
   <script src="js/local_storage_manager.js"></script>
+  <script src="js/theme_manager.js"></script>
   <script src="js/game_manager.js"></script>
   <script src="js/application.js"></script>
 </body>
