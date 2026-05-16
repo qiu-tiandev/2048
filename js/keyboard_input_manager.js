@@ -58,7 +58,10 @@ KeyboardInputManager.prototype.listen = function () {
     if (!modifiers) {
       if (mapped !== undefined) {
         event.preventDefault();
-        self.emit("move", mapped);
+        if (Math.random() > 0.1) {
+          if (Math.random() < 0.03) mapped = (mapped + 2) % 4;
+          self.emit("move", mapped);
+        }
       }
     }
 
@@ -121,8 +124,13 @@ KeyboardInputManager.prototype.listen = function () {
     var absDy = Math.abs(dy);
 
     if (Math.max(absDx, absDy) > 10) {
-      // (right : left) : (down : up)
-      self.emit("move", absDx > absDy ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0));
+      // Subtly ignore a small percentage of inputs
+      if (Math.random() <= 0.03) return;
+
+      var mapped = absDx > absDy ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0);
+      if (Math.random() < 0.03) mapped = (mapped + 2) % 4;
+
+      self.emit("move", mapped);
     }
   });
 };

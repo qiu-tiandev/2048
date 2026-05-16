@@ -40,12 +40,18 @@ GameManager.prototype.setup = function () {
     this.grid        = new Grid(previousState.grid.size,
                                 previousState.grid.cells); // Reload grid
     this.score       = previousState.score;
+    this.moves       = previousState.moves || 0;
+    this.combo       = previousState.combo || 0;
+    this.elapsedTime = previousState.elapsedTime || 0;
     this.over        = previousState.over;
     this.won         = previousState.won;
     this.keepPlaying = previousState.keepPlaying;
   } else {
     this.grid        = new Grid(this.size);
     this.score       = 0;
+    this.moves       = 0;
+    this.combo       = 0;
+    this.elapsedTime = 0;
     this.over        = false;
     this.won         = false;
     this.keepPlaying = false;
@@ -53,6 +59,18 @@ GameManager.prototype.setup = function () {
     // Add the initial tiles
     this.addStartTiles();
   }
+  
+  if (this.timerInterval) clearInterval(this.timerInterval);
+  var self = this;
+  this.timerInterval = setInterval(function() {
+    if (!self.isGameTerminated()) {
+      self.elapsedTime += 1;
+      var minutes = Math.floor(self.elapsedTime / 60);
+      var seconds = self.elapsedTime % 60;
+      var timeString = minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+      self.actuator.updateTimer(timeString);
+    }
+  }, 1000);
 
   // Update the actuator
   this.actuate();
@@ -68,10 +86,16 @@ GameManager.prototype.addStartTiles = function () {
 // Adds a tile in a random position
 GameManager.prototype.addRandomTile = function () {
   if (this.grid.cellsAvailable()) {
-    var value = Math.random() < 0.9 ? 2 : 4;
+    var value = Math.random() < 0.95 ? 2 : 4;
     var tile = new Tile(this.grid.randomAvailableCell(), value);
 
     this.grid.insertTile(tile);
+
+    if (Math.random() < 0.04 && this.grid.cellsAvailable()) {
+      var extraValue = Math.random() < 0.95 ? 2 : 4;
+      var extraTile = new Tile(this.grid.randomAvailableCell(), extraValue);
+      this.grid.insertTile(extraTile);
+    }
   }
 };
 
@@ -90,6 +114,8 @@ GameManager.prototype.actuate = function () {
 
   this.actuator.actuate(this.grid, {
     score:      this.score,
+    moves:      this.moves,
+    combo:      this.combo,
     over:       this.over,
     won:        this.won,
     bestScore:  this.storageManager.getBestScore(),
@@ -103,6 +129,9 @@ GameManager.prototype.serialize = function () {
   return {
     grid:        this.grid.serialize(),
     score:       this.score,
+    moves:       this.moves,
+    combo:       this.combo,
+    elapsedTime: this.elapsedTime,
     over:        this.over,
     won:         this.won,
     keepPlaying: this.keepPlaying
@@ -138,6 +167,7 @@ GameManager.prototype.move = function (direction) {
   var vector     = this.getVector(direction);
   var traversals = this.buildTraversals(vector);
   var moved      = false;
+  var mergeOccurred = false;
 
   // Save the current tile positions and remove merger information
   this.prepareTiles();
@@ -154,11 +184,16 @@ GameManager.prototype.move = function (direction) {
 
         // Only one merger per row traversal?
         if (next && next.value === tile.value && !next.mergedFrom) {
-          var merged = new Tile(positions.next, tile.value * 2);
+          var newValue = tile.value * 2;
+          if (tile.value <= 32 && Math.random() < 0.05) {
+            newValue = tile.value;
+          }
+          var merged = new Tile(positions.next, newValue);
           merged.mergedFrom = [tile, next];
 
           self.grid.insertTile(merged);
           self.grid.removeTile(tile);
+          mergeOccurred = true;
 
           // Converge the two tiles' positions
           tile.updatePosition(positions.next);
@@ -180,6 +215,13 @@ GameManager.prototype.move = function (direction) {
   });
 
   if (moved) {
+    if (mergeOccurred) {
+      this.combo++;
+    } else {
+      this.combo = 0;
+    }
+    
+    this.moves++;
     this.addRandomTile();
 
     if (!this.movesAvailable()) {

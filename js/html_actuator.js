@@ -2,6 +2,9 @@ function HTMLActuator() {
   this.tileContainer    = document.querySelector(".tile-container");
   this.scoreContainer   = document.querySelector(".score-container");
   this.bestContainer    = document.querySelector(".best-container");
+  this.movesContainer   = document.querySelector(".moves-container");
+  this.timerContainer   = document.querySelector(".timer-container");
+  this.comboContainer   = document.querySelector(".combo-container");
   this.messageContainer = document.querySelector(".game-message");
 
   this.score = 0;
@@ -23,6 +26,8 @@ HTMLActuator.prototype.actuate = function (grid, metadata) {
 
     self.updateScore(metadata.score);
     self.updateBestScore(metadata.bestScore);
+    self.updateMoves(metadata.moves);
+    self.updateCombo(metadata.combo);
 
     if (metadata.terminated) {
       if (metadata.over) {
@@ -122,6 +127,26 @@ HTMLActuator.prototype.updateScore = function (score) {
 
 HTMLActuator.prototype.updateBestScore = function (bestScore) {
   this.bestContainer.textContent = bestScore;
+};
+
+HTMLActuator.prototype.updateMoves = function (moves) {
+  if (this.movesContainer) {
+    this.movesContainer.innerHTML = moves + '<br><span style="text-transform: uppercase; font-size: 13px; line-height: 13px; color: #eee; margin-top: -15px; display: block;">Moves</span>';
+  }
+};
+
+HTMLActuator.prototype.updateCombo = function (combo) {
+  if (this.comboContainer) {
+    var comboColor = combo > 4 ? "#f67c5f" : (combo > 0 ? "#f65e3b" : "#bbada0");
+    this.comboContainer.style.background = comboColor;
+    this.comboContainer.innerHTML = combo + '<br><span style="text-transform: uppercase; font-size: 13px; line-height: 13px; color: #eee; margin-top: -15px; display: block;">Combo</span>';
+  }
+};
+
+HTMLActuator.prototype.updateTimer = function (timeString) {
+  if (this.timerContainer) {
+    this.timerContainer.innerHTML = timeString + '<br><span style="text-transform: uppercase; font-size: 13px; line-height: 13px; color: #eee; margin-top: -15px; display: block;">Time</span>';
+  }
 };
 
 HTMLActuator.prototype.message = function (won) {
